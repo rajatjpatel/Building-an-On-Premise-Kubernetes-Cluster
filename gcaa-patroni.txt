@@ -1,0 +1,342 @@
+sed -i 's/enforcing/disabled/g' /etc/selinux/config /etc/selinux/config
+sed -i "\$ a $1 192.168.8.73\t\t$NEW_HOST auhsmaxdbp01\t$NEW_HOST" /etc/hosts
+sed -i "\$ a $1 192.168.8.74\t\t$NEW_HOST auhsmaxdbp02\t$NEW_HOST" /etc/hosts
+sed -i "\$ a $1 192.168.8.76\t\t$NEW_HOST auhsmaxdbp03\t$NEW_HOST" /etc/hosts
+systemctl disable firewalld
+
+dnf -y install epel-release
+dnf -y update
+dnf -y install yum-utils
+dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+dnf -qy module disable postgresql
+dnf -y install postgresql12-server postgresql12 postgresql12-devel
+ln -s /usr/pgsql-12/bin/* /usr/sbin/
+curl -O https://ftp.postgresql.org/pub/repos/yum/common/pgdg-rhel8-extras/redhat/rhel-8.5-x86_64/etcd-3.5.5-1.rhel8.x86_64.rpm
+dnf -y install etcd-3.5.5-1.rhel8.x86_64.rpm
+
+
+vi /etc/watchdog.conf
+watchdog-device = /dev/watchdog
+mknod /dev/watchdog c 10 130
+modprobe softdog
+chown postgres /dev/watchdog
+
+cat - <<HEREDOC >/etc/etcd/etcd.conf
+ETCD_NAME=auhsmaxdbp01
+ETCD_DATA_DIR="/var/lib/etcd/auhsmaxdbp01"
+ETCD_LISTEN_PEER_URLS="http://192.168.8.73:2380"
+ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.8.73:2380"
+ETCD_INITIAL_CLUSTER="auhsmaxdbp01=http://192.168.8.73:2380,auhsmaxdbp02=http://192.168.8.74:2380,auhsmaxdbp03=http://192.168.8.76:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"
+ETCD_ENABLE_V2="true"
+HEREDOC
+
+cat - <<HEREDOC >/etc/etcd/etcd.conf
+ETCD_NAME=auhsmaxdbp02
+ETCD_DATA_DIR="/var/lib/etcd/auhsmaxdbp02"
+ETCD_LISTEN_PEER_URLS="http://192.168.8.74:2380"
+ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.8.74:2380"
+ETCD_INITIAL_CLUSTER="auhsmaxdbp01=http://192.168.8.73:2380,auhsmaxdbp02=http://192.168.8.74:2380,auhsmaxdbp03=http://192.168.8.76:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"
+ETCD_ENABLE_V2="true"
+HEREDOC
+
+cat - <<HEREDOC >/etc/etcd/etcd.conf
+ETCD_NAME=auhsmaxdbp03
+ETCD_DATA_DIR="/var/lib/etcd/auhsmaxdbp03"
+ETCD_LISTEN_PEER_URLS="http://192.168.8.76:2380"
+ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
+ETCD_INITIAL_ADVERTISE_PEER_URLS="http://192.168.8.76:2380"
+ETCD_INITIAL_CLUSTER="auhsmaxdbp01=http://192.168.8.73:2380,auhsmaxdbp02=http://192.168.8.74:2380,auhsmaxdbp03=http://192.168.8.76:2380"
+ETCD_INITIAL_CLUSTER_STATE="new"
+ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
+ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"
+ETCD_ENABLE_V2="true"
+HEREDOC
+
+export PGDATA="/var/lib/pgsql/12/data"
+export ETCDCTL_API="3"
+export PATRONI_ETCD_URL="http://127.0.0.1:2379"
+export PATRONI_SCOPE="pg_cluster"
+patroni1=192.168.8.73
+patroni2=192.168.8.74
+patroni3=192.168.8.76
+ENDPOINTS=$auhsmaxdbp01:2379,$auhsmaxdbp02:2379,$auhsmaxdbp03:2379
+
+systemctl start etcd && systemctl enable etcd && systemctl status etcd
+
+etcdctl endpoint status --write-out=table --endpoints=$ENDPOINTS
+
+dnf -y install python3 python3-devel python3-pip gcc libpq-devel
+pip3 install psycopg2
+pip3 install --upgrade testresources
+pip3 install --upgrade setuptools
+pip3 install psycopg2
+dnf -y install python3-etcd
+dnf -y install patroni patroni-etcd watchdog
+
+mkdir -p /etc/patroni
+cat - <<HEREDOC >/etc/patroni/patroni.yml
+scope: pg_cluster
+namespace: /service/
+name: auhsmaxdbp01
+
+restapi:
+    listen: 192.168.8.73:8008
+    connect_address: 192.168.8.73:8008
+
+etcd:
+    hosts: 192.168.8.73:2379, 192.168.8.74:2379, 192.168.8.76:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+
+  initdb:
+  - encoding: UTF8
+  - data-checksums
+
+  pg_hba:
+  - host replication replicator 127.0.0.1/32 md5
+  - host replication replicator 192.168.8.73/0 md5
+  - host replication replicator 192.168.8.74/0 md5
+  - host replication replicator 192.168.8.76/0 md5
+  - host all all 0.0.0.0/0 md5
+
+  users:
+    admin:
+      password: admin
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 192.168.8.73:5432
+  connect_address: 192.168.8.73:5432
+  data_dir: /var/lib/pgsql/12/data
+  bin_dir: /usr/pgsql-12/bin
+  pgpass: /tmp/pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: replicator
+    superuser:
+      username: postgres
+      password: postgres
+
+watchdog:
+  mode: required
+  device: /dev/watchdog
+  safety_margin: 5
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+HEREDOC
+
+mkdir -p /etc/patroni
+cat - <<HEREDOC >/etc/patroni/patroni.yml
+scope: pg_cluster
+namespace: /service/
+name: auhsmaxdbp02
+
+restapi:
+    listen: 192.168.8.74:8008
+    connect_address: 192.168.8.74:8008
+
+etcd:
+    hosts: 192.168.8.73:2379, 192.168.8.74:2379, 192.168.8.76:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+
+  initdb:
+  - encoding: UTF8
+  - data-checksums
+
+  pg_hba:
+  - host replication replicator 127.0.0.1/32 md5
+  - host replication replicator 192.168.8.73/0 md5
+  - host replication replicator 192.168.8.74/0 md5
+  - host replication replicator 192.168.8.76/0 md5
+  - host all all 0.0.0.0/0 md5
+
+  users:
+    admin:
+      password: admin
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 192.168.8.74:5432
+  connect_address: 192.168.8.74:5432
+  data_dir: /var/lib/pgsql/12/data
+  bin_dir: /usr/pgsql-12/bin
+  pgpass: /tmp/pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: replicator
+    superuser:
+      username: postgres
+      password: postgres
+
+watchdog:
+  mode: required
+  device: /dev/watchdog
+  safety_margin: 5
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+HEREDOC
+
+mkdir -p /etc/patroni
+cat - <<HEREDOC >/etc/patroni/patroni.yml
+scope: pg_cluster
+namespace: /service/
+name: auhsmaxdbp03
+
+restapi:
+    listen: 192.168.8.76:8008
+    connect_address: 192.168.8.76:8008
+
+etcd:
+    hosts: 192.168.8.73:2379, 192.168.8.74:2379, 192.168.8.76:2379
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+
+  initdb:
+  - encoding: UTF8
+  - data-checksums
+
+  pg_hba:
+  - host replication replicator 127.0.0.1/32 md5
+  - host replication replicator 192.168.8.73/0 md5
+  - host replication replicator 192.168.8.74/0 md5
+  - host replication replicator 192.168.8.76/0 md5
+  - host all all 0.0.0.0/0 md5
+
+  users:
+    admin:
+      password: admin
+      options:
+        - createrole
+        - createdb
+
+postgresql:
+  listen: 192.168.8.76:5432
+  connect_address: 192.168.8.76:5432
+  data_dir: /var/lib/pgsql/12/data
+  bin_dir: /usr/pgsql-12/bin
+  pgpass: /tmp/pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: replicator
+    superuser:
+      username: postgres
+      password: postgres
+
+watchdog:
+  mode: required
+  device: /dev/watchdog
+  safety_margin: 5
+
+tags:
+    nofailover: false
+    noloadbalance: false
+    clonefrom: false
+    nosync: false
+HEREDOC
+
+
+systemctl start patroni && systemctl enable patroni && systemctl status patroni
+
+dnf -y install haproxy
+mv /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.orig
+cat - <<HEREDOC >/etc/haproxy/haproxy.cfg
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     1000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    retries                 3
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout check           10s
+    maxconn                 900
+
+listen stats
+    mode http
+    bind *:7000
+    stats enable
+    stats uri /
+
+listen primary
+    bind 192.168.10.76:5000
+    option httpchk OPTIONS /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server patroni1 192.168.8.73:5432 maxconn 100 check port 8008
+    server patroni2 192.168.8.74:5432 maxconn 100 check port 8008
+    server patroni3 192.168.8.76:5432 maxconn 100 check port 8008
+
+listen standby
+    bind 192.168.8,76:5001
+    balance roundrobin
+    option httpchk OPTIONS /replica
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+    server patroni1 192.168.8.73:5432 maxconn 100 check port 8008
+    server patroni2 192.168.8.74:5432 maxconn 100 check port 8008
+    server patroni3 192.168.8.76:5432 maxconn 100 check port 8008
+HEREDOC
+
+ systemctl start haproxy &&  systemctl enable haproxy
