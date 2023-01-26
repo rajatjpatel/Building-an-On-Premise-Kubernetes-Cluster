@@ -4,6 +4,11 @@ sed -i "\$ a $1 192.168.8.74\t\t$NEW_HOST auhsmaxdbp02\t$NEW_HOST" /etc/hosts
 sed -i "\$ a $1 192.168.8.76\t\t$NEW_HOST auhsmaxdbp03\t$NEW_HOST" /etc/hosts
 systemctl disable firewalld
 
+vgcreate vg00 /dev/sdb
+lvcreate -l 100%FREE -n lv00 vg00
+mkfs.xfs /dev/vg00/lv00
+
+
 dnf -y install epel-release
 dnf -y update
 dnf -y install yum-utils
