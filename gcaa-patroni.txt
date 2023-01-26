@@ -26,6 +26,8 @@ mknod /dev/watchdog c 10 130
 modprobe softdog
 chown postgres /dev/watchdog
 
+mv /etc/etcd/etcd.conf /etc/etcd/etcd.conf.ori
+
 cat - <<HEREDOC >/etc/etcd/etcd.conf
 ETCD_NAME=auhsmaxdbp01
 ETCD_DATA_DIR="/var/lib/etcd/auhsmaxdbp01"
@@ -65,6 +67,7 @@ ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"
 ETCD_ENABLE_V2="true"
 HEREDOC
 
+vi .bash_profile
 export PGDATA="/var/lib/pgsql/12/data"
 export ETCDCTL_API="3"
 export PATRONI_ETCD_URL="http://127.0.0.1:2379"
