@@ -348,3 +348,76 @@ listen standby
 HEREDOC
 
  systemctl start haproxy &&  systemctl enable haproxy
+ 
+ All 3 node following steps
+
+dnf -y install keepalived
+
+vi /etc/sysctl.conf
+net.ipv4.ip_nonlocal_bind = 1
+net.ipv4.ip_forward = 1
+
+sysctl --system
+sysctl -p
+
+
+mv /etc/keepalived/keepalived.conf  /etc/keepalived/keepalived.conf.ori
+
+ip addr show enp0s3
+
+cat - <<HEREDOC >/etc/keepalived/keepalived.conf 
+vrrp_script chk_haproxy {
+        script "pkill -0 haproxy"
+        interval 5
+        weight -4
+        fall 2
+        rise 1
+}
+
+vrrp_script chk_lb {
+        script "pkill -0 keepalived"
+        interval 1
+        weight 6
+        fall 2
+        rise 1
+}
+
+vrrp_script chk_servers {
+        script "echo 'GET /are-you-ok' | nc 127.0.0.1 7000 | grep -q '200 OK'"
+        interval 2
+        weight 2
+        fall 2
+        rise 2
+}
+
+vrrp_instance vrrp_1 {
+        interface enp0s3
+        state BACKUP
+        virtual_router_id 51
+        priority 99
+        virtual_ipaddress_excluded {
+                192.168.8.75
+        }
+        track_interface {
+                enp0s3 weight -2
+        }
+        track_script {
+                chk_haproxy
+                chk_lb
+        }
+}
+HEREDOC
+
+Kindly ask end cus for IP Address for virtual and check the ethernet card name as well.
+
+Before starting keepalived find out who is leader in pgsql cluster.
+#patronictl -c /etc/patroni/patroni.yml list
+
+On leader node run below command
+
+systemctl start keepalived
+systemctl status keepalived
+systemctl enable keepalived
+
+Other 2 node run above command 
+
