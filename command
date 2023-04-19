@@ -56,7 +56,7 @@ pcs cluster status
 
 Set Fence Device on Cluster 
 Using RHV 
-
+pcs stonith create rhv-m fence_rhevm ipaddr=172.16.50.81 login='admin@internal' passwd='Root@321' ssl=1 ssl_insecure=1 disable_http_filter=1 pcmk_host_map="drapn1.nbf.ae:DRAPN1;drapn2.nbf.ae:DRAPN2;drapn3.nbf.ae:DRAPN3" power_timeout=30 shell_timeout=30 login_timeout=30
 On both the nodes
 vi /etc/lvm/lvm.conf
 # line 1217: change
