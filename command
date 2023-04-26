@@ -92,3 +92,14 @@ showmount -e
 On client
 mount -t nfs4 192.168.122.100:share01 /mnt
 mount -t nfs 1192.168.122.100:/home/nfs-share/nfs-root/share01 /mnt
+
+SUSEConnect -r
+SUSEConnect -r REGISTRATION_CODE -e EMAIL_ADDRESS
+SUSEConnect --list-extensions | grep LTSS
+SUSEConnect -p SLES-LTSS/15.3/x86_64 -r REGISTRATION_CODE
+/etc/zypp/zypp.conf.
+solver.onlyRequires = true
+/etc/zypp/zypper.conf
+installRecommends=false
+zypper migration
+
