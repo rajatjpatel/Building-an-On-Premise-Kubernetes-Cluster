@@ -16,6 +16,7 @@ pcs host auth -u hacluster -p redhat node1 node2
 pcs cluster setup appgfs --start node1 node2 --force
 pcs cluster start --all
 pcs cluster enable --all
+pcs resource create ClusterIP ocf:heartbeat:IPaddr2 ip=192.168.122.120 --group shared_vg1 
 pcs stonith create node1_ipmi fence_ipmilan ipaddr=192.168.11.11 lanplus=1 login=unixadmin passwd='redhat' pcmk_monitor_timeout=120s
 pcs stonith create node2_ipmi fence_ipmilan ipaddr=192.168.11.12 lanplus=1 login=unixadmin passwd='redhat' pcmk_monitor_timeout=120s
 pcs stonith update node1_ipmi delay=10
@@ -27,7 +28,7 @@ pcs resource create lvmlockd --group locking ocf:heartbeat:lvmlockd op monitor i
 vgcreate --shared shared_vg1 /dev/mapper/mpatha
 vgchange --lock-start shared_vg1
 lvcreate --activate sy -l 100%FREE -n shared_lv1 shared_vg1
-mkfs.gfs2 -j2 -p lock_dlm -t tibcorcems:gfs2 /dev/shared_vg1/shared_lv1
+mkfs.gfs2 -j2 -p lock_dlm -t ha:gfs2 /dev/shared_vg1/shared_lv1
 pcs resource create sharedlv1 --group shared_vg1 ocf:heartbeat:LVM-activate lvname=shared_lv1 vgname=shared_vg1 activation_mode=shared vg_access_mode=lvmlockd
 pcs resource clone shared_vg1 interleave=true
 pcs constraint order start locking-clone then shared_vg1-clone
