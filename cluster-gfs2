@@ -40,6 +40,7 @@ mount |grep gfs
 pcs status --full
 
 https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_high_availability_clusters/assembly_configuring-gfs2-in-a-cluster-configuring-and-managing-high-availability-clusters
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_high_availability_clusters/assembly_configuring-gfs2-in-a-cluster-configuring-and-managing-high-availability-clusters
 
 pcs property set no-quorum-policy=freeze
 pcs resource create dlm --group locking ocf:pacemaker:controld op monitor interval=30s on-fail=fence
