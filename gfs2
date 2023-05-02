@@ -94,16 +94,17 @@ Start the lock manager for each of the shared volume groups.
 
     Create an LVM-activate resource named sharedlv2 for the logical volume shared_lv2 in volume group shared_vg1. This resource will also be part of the resource group shared_vg1.
 
-    # pcs resource create sharedlv2 --group shared_vg1 ocf:heartbeat:LVM-activate lvname=shared_lv2 vgname=shared_vg1 activation_mode=shared vg_access_mode=lvmlockd
+    # pcs resource create sharedlv2 --group shared_vg2 ocf:heartbeat:LVM-activate lvname=shared_lv2 vgname=shared_vg2 activation_mode=shared vg_access_mode=lvmlockd
 
     Create an LVM-activate resource named sharedlv3 for the logical volume shared_lv1 in volume group shared_vg2. This command also creates the resource group shared_vg2 that includes the resource.
 
-    # pcs resource create sharedlv3 --group shared_vg2 ocf:heartbeat:LVM-activate lvname=shared_lv1 vgname=shared_vg2 activation_mode=shared vg_access_mode=lvmlockd
+    # pcs resource create sharedlv3 --group shared_vg3 ocf:heartbeat:LVM-activate lvname=shared_lv3 vgname=shared_vg3 activation_mode=shared vg_access_mode=lvmlockd
 
     Clone the two new resource groups.
 
     # pcs resource clone shared_vg1 interleave=true
     # pcs resource clone shared_vg2 interleave=true
+    # pcs resource clone shared_vg3 interleave=true
 
     Configure ordering constraints to ensure that the locking resource group that includes the dlm and lvmlockd resources starts first.
 
@@ -112,9 +113,11 @@ Start the lock manager for each of the shared volume groups.
     # pcs constraint order start locking-clone then shared_vg2-clone
     Adding locking-clone shared_vg2-clone (kind: Mandatory) (Options: first-action=start then-action=start)
     Configure colocation constraints to ensure that the vg1 and vg2 resource groups start on the same node as the locking resource group.
-
+    # pcs constraint order start locking-clone then shared_vg3-clone
+    
     # pcs constraint colocation add shared_vg1-clone with locking-clone
     # pcs constraint colocation add shared_vg2-clone with locking-clone
+    # pcs constraint colocation add shared_vg3-clone with locking-clone
     On both nodes in the cluster, verify that the logical volumes are active. There may be a delay of a few seconds.
 
     # lvs
@@ -134,9 +137,9 @@ Start the lock manager for each of the shared volume groups.
 
     The following commands create the file system resources. These commands add each resource to the resource group that includes the logical volume resource for that file system.
 
-    # pcs resource create sharedfs1 --group shared_vg1 ocf:heartbeat:Filesystem device="/dev/shared_vg1/shared_lv1" directory="/mnt/gfs1" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
-    # pcs resource create sharedfs2 --group shared_vg1 ocf:heartbeat:Filesystem device="/dev/shared_vg1/shared_lv2" directory="/mnt/gfs2" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
-    # pcs resource create sharedfs3 --group shared_vg2 ocf:heartbeat:Filesystem device="/dev/shared_vg2/shared_lv1" directory="/mnt/gfs3" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
+    # pcs resource create sharedfs1 --group shared_vg1 ocf:heartbeat:Filesystem device="/dev/shared_vg1/shared_lv1" directory="/app" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
+    # pcs resource create sharedfs2 --group shared_vg2 ocf:heartbeat:Filesystem device="/dev/shared_vg1/shared_lv2" directory="/appdataUI" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
+    # pcs resource create sharedfs3 --group shared_vg3 ocf:heartbeat:Filesystem device="/dev/shared_vg2/shared_lv1" directory="/appdataIP" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
     Verification steps
 
     Verify that the GFS2 file systems are mounted on both nodes of the cluster.
