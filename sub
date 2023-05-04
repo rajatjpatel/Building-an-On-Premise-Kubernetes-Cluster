@@ -1,0 +1,8 @@
+subscription-manager register --username <username> --password <password> --auto-attach
+subscription-manager refresh
+
+Un-registering a system
+
+subscription-manager remove --all
+subscription-manager unregister
+subscription-manager clean
