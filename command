@@ -103,3 +103,240 @@ solver.onlyRequires = true
 installRecommends=false
 zypper migration
 
+
+The server has 4 Ethernet links to a layer 3 switch with names:
+
+enp3s0f0, enp3s0f1, enp4s0f0, enp4s0f1
+
+There are two bond interfaces both configured as active-backup
+
+bond0, bond1
+
+enp4s0f0 and enp4s0f1 interfaces are bonded as bond0. Bond0 is for making ssh connections and management only so corresponding switch ports are not configured in trunk mode.
+
+enp3s0f0 and enp3s0f1 interfaces are bonded as bond1. Bond1 is for data and corresponding switch ports are configured in trunk mode.
+
+Bond0 is the default gateway for the server and has IP address 10.1.10.11
+
+Bond1 has three subinterfaces with VLAN 4, 36, 41. IP addresses are 10.1.3.11, 10.1.35.11, 10.1.40.11 respectively.
+
+Proper communication with other servers on the network we should use routing tables. There are three rt_tables. Each of them is dedicated to a subinterface. Gateways for each VLAN are 10.1.10.254, 10.1.3.254, 10.1.35.254, 10.1.40.254 respectively.
+
+Now I can show how slave interface files are configured:
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-enp4s0f0
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+DEFROUTE=no
+IPV4_FAILURE_FATAL=no
+IPV6INIT=no
+IPV6_AUTOCONF=no
+IPV6_DEFROUTE=no
+IPV6_FAILURE_FATAL=no
+NAME=enp4s0f0
+DEVICE=enp4s0f0
+ONBOOT=yes
+MASTER=bond0
+SLAVE=yes
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-enp4s0f1
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+DEFROUTE=no
+IPV4_FAILURE_FATAL=no
+IPV6INIT=no
+IPV6_AUTOCONF=no
+IPV6_DEFROUTE=no
+IPV6_FAILURE_FATAL=no
+NAME=enp4s0f1
+DEVICE=enp4s0f1
+ONBOOT=yes
+MASTER=bond0
+SLAVE=yes
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-enp3s0f0
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+DEFROUTE=no
+IPV4_FAILURE_FATAL=no
+IPV6INIT=no
+IPV6_AUTOCONF=no
+IPV6_DEFROUTE=no
+IPV6_FAILURE_FATAL=no
+NAME=enp3s0f0
+DEVICE=enp3s0f0
+ONBOOT=yes
+MASTER=bond1
+SLAVE=yes
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-enp3s0f1
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+BOOTPROTO=none
+DEFROUTE=no
+IPV4_FAILURE_FATAL=no
+IPV6INIT=no
+IPV6_AUTOCONF=no
+IPV6_DEFROUTE=no
+IPV6_FAILURE_FATAL=no
+NAME=enp3s0f1
+DEVICE=enp3s0f1
+ONBOOT=yes
+MASTER=bond1
+SLAVE=yes
+
+Master interfaces:
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-bond0
+DEVICE=bond0
+NAME=bond0
+BONDING_MASTER=yes
+BONDING_OPTS="miimon=100 mode=1 primary=enp4s0f1"
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=10.1.10.11
+NETMASK=255.255.255.0
+NETWORK=10.1.10.0
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-bond1
+DEVICE=bond1
+NAME=bond1
+BONDING_MASTER=yes
+BONDING_OPTS="miimon=100 mode=1 primary=enp3s0f1"
+ONBOOT=yes
+BOOTPROTO=none
+
+Subinterfaces for bond1:
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-bond1.4
+DEVICE=bond1.4
+VLAN=yes
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=10.1.3.11
+NETMASK=255.255.255.0
+NETWORK=10.1.3.0
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-bond1.36
+DEVICE=bond1.36
+VLAN=yes
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=10.1.35.11
+NETMASK=255.255.255.0
+NETWORK=10.1.35.0
+
+$ cat /etc/sysconfig/network-scripts/ifcfg-bond1.41
+DEVICE=bond1.41
+VLAN=yes
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=10.1.40.11
+NETMASK=255.255.255.0
+NETWORK=10.1.40.0
+
+Bonding module aliases should not be forgotten:
+
+$ cat /etc/modprobe.d/bonding.conf
+alias bond0 bonding
+alias bond1 bonding
+
+Now comes the routing:
+
+$ cat /etc/iproute2/rt_tables
+...
+...
+1 bond0
+2 bond1.4
+3 bond1.36
+4 bond1.41
+
+As I mentioned earlier bond0 is the default GW:
+
+$ cat /etc/sysconfig/network
+GATEWAY=10.1.10.254
+
+Route scripts:
+
+$ cat /etc/sysconfig/network-scripts/route-bond0
+10.1.10.0/24 dev bond0 src 10.1.10.11 table bond0
+default via 10.1.10.254 dev bond0 table bond0
+
+$ cat /etc/sysconfig/network-scripts/route-bond1.4
+10.1.3.0/24 dev bond1.4 src 10.1.3.11 table bond1.4
+default via 10.1.3.254 dev bond1.4 table bond1.4
+
+$ cat /etc/sysconfig/network-scripts/route-bond1.36
+10.1.35.0/24 dev bond1.36 src 10.1.35.11 table bond1.36
+default via 10.1.35.254 dev bond1.36 table bond1.36
+
+$ cat /etc/sysconfig/network-scripts/route-bond1.41
+10.1.40.0/24 dev bond1.41 src 10.1.40.11 table bond1.41
+default via 10.1.40.254 dev bond1.41 table bond1.41
+
+IPRoute Rule scripts:
+
+$ cat /etc/sysconfig/network-scripts/rule-bond0
+from 10.1.10.11/32 table bond0
+to 10.1.10.11/32 table bond0
+
+$ cat /etc/sysconfig/network-scripts/rule-bond1.4
+from 10.1.3.11/32 table bond1.4
+to 10.1.3.11/32 table bond1.4
+
+$ cat /etc/sysconfig/network-scripts/rule-bond1.36
+from 10.1.35.11/32 table bond1.36
+to 10.1.35.11/32 table bond1.36
+
+$ cat /etc/sysconfig/network-scripts/rule-bond1.41
+from 10.1.40.11/32 table bond1.41
+to 10.1.40.11/32 table bond1.41
+
+When the Linux host boots up clearly, route and rule scripts are executed. They should look like this:
+
+$ ip route show table all
+default via 10.1.10.254 dev bond0 table bond0
+10.1.10.0/24 dev bond0 table bond0 scope link src 10.1.10.11
+default via 10.1.3.254 dev bond1.4 table bond1.4
+10.1.3.0/24 dev bond1.4 table bond1.4 scope link src 10.1.3.11
+default via 10.1.35.254 dev bond1.36 table bond1.36
+10.1.35.0/24 dev bond1.36 table bond1.36 scope link src 10.1.35.11
+default via 10.1.40.254 dev bond1.41 table bond1.41
+10.1.40.0/24 dev bond1.41 table bond1.41 scope link src 10.1.40.11
+default via 10.1.10.254 dev bond0
+10.1.3.0/24 dev bond1.4 proto kernel scope link src 10.1.3.11
+10.1.10.0/24 dev bond0 proto kernel scope link src 10.1.10.11
+10.1.35.0/24 dev bond1.36 proto kernel scope link src 10.1.35.11
+10.1.40.0/24 dev bond1.41 proto kernel scope link src 10.1.40.11
+169.254.0.0/16 dev bond0 scope link metric 1006
+169.254.0.0/16 dev bond1 scope link metric 1007
+169.254.0.0/16 dev bond1.36 scope link metric 1008
+169.254.0.0/16 dev bond1.4 scope link metric 1009
+169.254.0.0/16 dev bond1.41 scope link metric 1010
+
+$ ip rule show
+0: from all lookup local
+32758: from all to 10.1.40.11 lookup bond1.41
+32759: from 10.1.40.11 lookup bond1.41
+32760: from all to 10.1.3.11 lookup bond1.4
+32761: from 10.1.3.11 lookup bond1.4
+32762: from all to 10.1.35.11 lookup bond1.36
+32763: from 10.1.35.11 lookup bond1.36
+32764: from all to 10.1.10.11 lookup bond0
+32765: from 10.1.10.11 lookup bond0
+32766: from all lookup main
+32767: from all lookup default
+
+
+I hope, this article is useful and you enjoy it.
