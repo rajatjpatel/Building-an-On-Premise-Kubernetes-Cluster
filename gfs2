@@ -5,156 +5,124 @@
                         |
                                  |
 +----------------------+          |          +----------------------+
-| [  Node#1  ]         |10.0.0.XX | 10.0.0.XX| [          Node#2  ] |
+| [  Cluster Node#1  ] |10.0.0.XX | 10.0.0.XX| [  Cluster Node#2  ] |
 |                      |  +----------+----------+                   |
 |                      |                     |                      |
 +----------------------+                     +----------------------+
-
+(https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html-single/configuring_and_managing_high_availability_clusters/index)
 Install the Red Hat High Availability Add-On software packages from the High Availability channel, and start and enable the pcsd service.
+On both nodes in the cluster, enable the repository for Resilient Storage that corresponds to your system architecture. For example, to enable the Resilient Storage repository for an x86_64 system,
+you can enter the following subscription-manager command:
+# subscription-manager repos --enable=rhel-8-for-x86_64-resilientstorage-rpms --enable=rhel-8-for-x86_64-highavailability-rpms
 
+On both nodes of the cluster, install the lvm2-lockd, gfs2-utils, and dlm packages.
+To support these packages, you must be subscribed to the AppStream channel and the Resilient Storage channel.
 # dnf -y install pacemaker pcs fence-agents-ilo* lvm2-lockd gfs2-utils dlm
 
+On both nodes of the cluster, set the use_lvmlockd configuration option in the /etc/lvm/lvm.conf file to use_lvmlockd=1.
 # vi /etc/lvm/lvm.conf
 # line 1178 : change
 use_lvmlockd = 1
 
-systemctl enable pcsd
-systemctl start  pcsd
+# systemctl enable pcsd
+# systemctl start  pcsd
 
-Set a password for user hacluster on each node in the cluster and authenticate user hacluster for each node in the cluster on the node from which you will be running the pcs commands. 
+Set a password for user hacluster on each node in the cluster and authenticate user hacluster for each node in the cluster on the node from which you will be running the pcs commands.
 This example is using only a single node, the node from which you are running the commands, but this step is included here since it is a necessary step in configuring a supported Red Hat High Availability multi-node cluster.
-echo "redhat" | passwd --stdin hacluster
+# pcs host auth -u hacluster -p redhat dx11840 dx11841
+# pcs cluster setup appgfs --start dx11840 dx11841
+# pcs cluster start --all
+# pcs cluster enable --all
 
-Create a cluster named my_cluster with one member and check the status of the cluster. This command creates and starts the cluster in one step.
-# pcs host auth -u hacluster -p redhat node1 node2
-# pcs cluster setup appgfs --start node1 node2 
-
-Set the global Pacemaker parameter no-quorum-policy to freeze.
-
+Set the global Pacemaker parameter no-quorum-policy to freeze. Kindly create account in ilo and enable 623/433 port from network
 # pcs property set no-quorum-policy=freeze
 
-A Red Hat High Availability cluster requires that you configure fencing for the cluster.
-# pcs stonith create node1_ipmi fence_ipmilan ipaddr=192.168.11.11 lanplus=1 login=unixadmin passwd='redhat' pcmk_monitor_timeout=120s
-# pcs stonith create node2_ipmi fence_ipmilan ipaddr=192.168.11.12 lanplus=1 login=unixadmin passwd='redhat' pcmk_monitor_timeout=120s
-# pcs stonith update node1_ipmi delay=10
-# pcs cluster config update totem token=120000
-
 Set up a dlm resource. This is a required dependency for configuring a GFS2 file system in a cluster. This example creates the dlm resource as part of a resource group named locking.
-
 # pcs resource create dlm --group locking ocf:pacemaker:controld op monitor interval=30s on-fail=fence
 
 Clone the locking resource group so that the resource group can be active on both nodes of the cluster.
-
 # pcs resource clone locking interleave=true
 
 Set up an lvmlockd resource as part of the locking resource group.
-
 # pcs resource create lvmlockd --group locking ocf:heartbeat:lvmlockd op monitor interval=30s on-fail=fence
+
+# pcs stonith create dx11840_ipmi fence_ipmilan ip=10.51.244.75 lanplus=1 username=unixadmin password='redhat123' pcmk_monitor_timeout=120s
+# pcs stonith create dx11840_ipmi fence_ipmilan ip=10.51.244.76 lanplus=1 username=unixadmin password='redhat123' pcmk_monitor_timeout=120s
+# pcs stonith update dx11840_ipmi delay=10
+# pcs cluster config update totem token=120000
+
+Check the status of the cluster to ensure that the locking resource group has started on both nodes of the cluster.
+# pcs status --full -- Attach Screen short
 
 On one node of the cluster, create two shared volume groups. One volume group will contain two GFS2 file systems, and the other volume group will contain one GFS2 file system.
 
-# vgcreate --shared shared_vg1 /dev/vdb
-# vgcreate --shared shared_vg2 /dev/vdc
-
-On the second node in the cluster:
-
-If you are using an LVM devices file, supported in RHEL 8.5 and later, add the shared devices to the devices file.
-
-# lvmdevices --adddev /dev/vdb
-# lvmdevices --adddev /dev/vdc
-
+# vgcreate --shared vgapps /dev/mapper/mpathe
+# vgcreate --shared vgappsdatauc /dev/mapper/mpathd /dev/mapper/mpathc /dev/mapper/mpathb
+# vgcreate --shared vgappsdatapi /dev/mapper/mpatha
 
 Start the lock manager for each of the shared volume groups.
 
-# vgchange --lockstart shared_vg1
-  VG shared_vg1 starting dlm lockspace
-  Starting locking.  Waiting until locks are ready...
-# vgchange --lockstart shared_vg2
-  VG shared_vg2 starting dlm lockspace
-  Starting locking.  Waiting until locks are ready...
+# vgchange --lockstart vgadds
+# vgchange --lockstart vgappsdatauc
+# vgchange --lockstart vgappsdatapi
 
-  On one node in the cluster, create the shared logical volumes and format the volumes with a GFS2 file system. One journal is required for each node that mounts the file system. Ensure that you create enough journals for each of the nodes in your cluster. The format of the lock table name is ClusterName:FSName where ClusterName is the name of the cluster for which the GFS2 file system is being created and FSName is the file system name, which must be unique for all lock_dlm file systems over the cluster.
+On one node in the cluster, create the shared logical volumes and format the volumes with a GFS2 file system. One journal is required for each node that mounts the file system. Ensure that you create enough journals for each of the nodes in your cluster. The format of the lock table name is ClusterName:FSName where ClusterName is the name of the cluster for which the GFS2 file system is being created and FSName is the file system name, which must be unique for all lock_dlm file systems over the cluster.
 
-  # lvcreate --activate sy -l 100%FREE -n shared_lv1 shared_vg1
-    Logical volume "shared_lv1" created.
-  # lvcreate --activate sy -l 100%FREE -n shared_lv2 shared_vg1
-    Logical volume "shared_lv2" created.
-  # lvcreate --activate sy -l 100%FREE -n shared_lv1 shared_vg2
-    Logical volume "shared_lv1" created.
+# lvcreate --activate sy -l 100%FREE -n lvapps vgapps
+# lvcreate --activate sy -l 100%FREE -n lvappsdatauc vgappsdatauc
+# lvcreate --activate sy -l 100%FREE -n lvappsdatapi vgappsdatapi
 
-    # mkfs.gfs2 -j2 -p lock_dlm -t my_cluster:gfs2-demo1 /dev/shared_vg1/shared_lv1
-    # mkfs.gfs2 -j2 -p lock_dlm -t my_cluster:gfs2-demo2 /dev/shared_vg1/shared_lv2
-    # mkfs.gfs2 -j2 -p lock_dlm -t my_cluster:gfs2-demo3 /dev/shared_vg2/shared_lv1  
-    
-  Create an LVM-activate resource for each logical volume to automatically activate that logical volume on all nodes.
+# mkfs.gfs2 -j2 -p lock_dlm -t appgfs:gfs2app /dev/vgapps/lvapps
+# mkfs.gfs2 -j2 -p lock_dlm -t appgfs:gfs2appdatauc /dev/vgappsdatauc/lvappsdatauc
+# mkfs.gfs2 -j2 -p lock_dlm -t appgfs:gfs2appdatapi /dev/vgappsdatapi/lvappsdatapi
 
-  Create an LVM-activate resource named sharedlv1 for the logical volume shared_lv1 in volume group shared_vg1. This command also creates the resource group shared_vg1 that includes the resource. In this example, the resource group has the same name as the shared volume group that includes the logical volume.
+Create an LVM-activate resource for each logical volume to automatically activate that logical volume on all nodes.
+Create an LVM-activate resource named vgapps for the logical volume lvapps in volume group vgapps.
+This command also creates the resource group vgapps that includes the resource.
+In this example, the resource group has the same name as the shared volume group that includes the logical volume.
 
-    # pcs resource create sharedlv1 --group shared_vg1 ocf:heartbeat:LVM-activate lvname=shared_lv1 vgname=shared_vg1 activation_mode=shared vg_access_mode=lvmlockd
+# pcs resource create lvapps --group vgapps ocf:heartbeat:LVM-activate lvname=lvapps vgname=vgapps activation_mode=shared vg_access_mode=lvmlockd
+# pcs resource create lvappsdatauc --group vgappsdatauc ocf:heartbeat:LVM-activate lvname=lvappsdatauc vgname=vgappsdatauc activation_mode=shared vg_access_mode=lvmlockd
+# pcs resource create lvappsdatapi  --group vgappsdatapi ocf:heartbeat:LVM-activate lvname=lvappsdatapi  vgname=vgappsdatapi activation_mode=shared vg_access_mode=lvmlockd
 
-    Create an LVM-activate resource named sharedlv2 for the logical volume shared_lv2 in volume group shared_vg1. This resource will also be part of the resource group shared_vg1.
+Clone the two new resource groups.
 
-    # pcs resource create sharedlv2 --group shared_vg2 ocf:heartbeat:LVM-activate lvname=shared_lv2 vgname=shared_vg2 activation_mode=shared vg_access_mode=lvmlockd
+# pcs resource clone vgapps interleave=true
+# pcs resource clone vgappsdatauc interleave=true
+# pcs resource clone vgappsdatapi interleave=true
 
-    Create an LVM-activate resource named sharedlv3 for the logical volume shared_lv1 in volume group shared_vg2. This command also creates the resource group shared_vg2 that includes the resource.
+Configure ordering constraints to ensure that the locking resource group that includes the dlm and lvmlockd resources starts first.
 
-    # pcs resource create sharedlv3 --group shared_vg3 ocf:heartbeat:LVM-activate lvname=shared_lv3 vgname=shared_vg3 activation_mode=shared vg_access_mode=lvmlockd
+# pcs constraint order start locking-clone then vgapps-clone
+# pcs constraint order start locking-clone then vgappsdatauc-clone
+# pcs constraint order start locking-clone then vgappsdatapi-clone
 
-    Clone the two new resource groups.
+Configure colocation constraints to ensure that the vg1 and vg2 resource groups start on the same node as the locking resource group.
+# pcs constraint colocation add vgapps-clone with locking-clone
+# pcs constraint colocation add vgappsdatauc-clone with locking-clone
+# pcs constraint colocation add vgappsdatapi-clone with locking-clone
 
-    # pcs resource clone shared_vg1 interleave=true
-    # pcs resource clone shared_vg2 interleave=true
-    # pcs resource clone shared_vg3 interleave=true
+On both nodes in the cluster, verify that the logical volumes are active. There may be a delay of a few seconds.
 
-    Configure ordering constraints to ensure that the locking resource group that includes the dlm and lvmlockd resources starts first.
+# lvs
 
-    # pcs constraint order start locking-clone then shared_vg1-clone
-    Adding locking-clone shared_vg1-clone (kind: Mandatory) (Options: first-action=start then-action=start)
-    # pcs constraint order start locking-clone then shared_vg2-clone
-    Adding locking-clone shared_vg2-clone (kind: Mandatory) (Options: first-action=start then-action=start)
-    Configure colocation constraints to ensure that the vg1 and vg2 resource groups start on the same node as the locking resource group.
-    # pcs constraint order start locking-clone then shared_vg3-clone
-    
-    # pcs constraint colocation add shared_vg1-clone with locking-clone
-    # pcs constraint colocation add shared_vg2-clone with locking-clone
-    # pcs constraint colocation add shared_vg3-clone with locking-clone
-    On both nodes in the cluster, verify that the logical volumes are active. There may be a delay of a few seconds.
+Create a file system resource to automatically mount each GFS2 file system on all nodes.
+You should not add the file system to the /etc/fstab file because it will be managed as a Pacemaker cluster resource.
+Mount options can be specified as part of the resource configuration with options=options. Run the pcs resource describe Filesystem command to display the full configuration options.
+The following commands create the file system resources. These commands add each resource to the resource group that includes the logical volume resource for that file system.
 
-    # lvs
-      LV         VG          Attr       LSize
-      shared_lv1 shared_vg1  -wi-a----- 5.00g
-      shared_lv2 shared_vg1  -wi-a----- 5.00g
-      shared_lv1 shared_vg2  -wi-a----- 5.00g
+# pcs resource create appsfs --group vgapps ocf:heartbeat:Filesystem device="/dev/vgapps/lvapps" directory="/apps" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
+# pcs resource create appsdataucfs --group vgappsdatauc ocf:heartbeat:Filesystem device="/dev/vgappsdatauc/lvappsdatauc" directory="/appsdataUC" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
+# pcs resource create appsdatapifs --group vgappsdatapi ocf:heartbeat:Filesystem device="/dev/vgappsdatapi/lvappsdatapi" directory="/appsdataPI" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
 
-    # lvs
-      LV         VG          Attr       LSize
-      shared_lv1 shared_vg1  -wi-a----- 5.00g
-      shared_lv2 shared_vg1  -wi-a----- 5.00g
-      shared_lv1 shared_vg2  -wi-a----- 5.00g
-    Create a file system resource to automatically mount each GFS2 file system on all nodes.
+Verify that the GFS2 file systems are mounted on both nodes of the cluster.
 
-    You should not add the file system to the /etc/fstab file because it will be managed as a Pacemaker cluster resource. Mount options can be specified as part of the resource configuration with options=options. Run the pcs resource describe Filesystem command to display the full configuration options.
+#mount | grep gfs2
 
-    The following commands create the file system resources. These commands add each resource to the resource group that includes the logical volume resource for that file system.
+Create IPaddr2 and  appgfs resources for the cluster to manage. The 'IPaddr2' resource is a floating IP address that must not be one already associated with a physical node.
+If the 'IPaddr2' resource’s NIC device is not specified, the floating IP must reside on the same network as the statically assigned IP address used by the node.
 
-    # pcs resource create sharedfs1 --group shared_vg1 ocf:heartbeat:Filesystem device="/dev/shared_vg1/shared_lv1" directory="/app" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
-    # pcs resource create sharedfs2 --group shared_vg2 ocf:heartbeat:Filesystem device="/dev/shared_vg1/shared_lv2" directory="/appdataUI" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
-    # pcs resource create sharedfs3 --group shared_vg3 ocf:heartbeat:Filesystem device="/dev/shared_vg2/shared_lv1" directory="/appdataIP" fstype="gfs2" options=noatime op monitor interval=10s on-fail=fence
-    Verification steps
+# pcs resource create appsip1 ocf:heartbeat:IPaddr2 ip=10.44.115.198 cidr_netmask=24 op monitor interval=30s
+# pcs resource create appsip2 ocf:heartbeat:IPaddr2 ip=10.44.115.199 cidr_netmask=24 op monitor interval=30s
 
-    Verify that the GFS2 file systems are mounted on both nodes of the cluster.
 
-    # mount | grep gfs2
-    /dev/mapper/shared_vg1-shared_lv1 on /mnt/gfs1 type gfs2 (rw,noatime,seclabel)
-    /dev/mapper/shared_vg1-shared_lv2 on /mnt/gfs2 type gfs2 (rw,noatime,seclabel)
-    /dev/mapper/shared_vg2-shared_lv1 on /mnt/gfs3 type gfs2 (rw,noatime,seclabel)
-
-    # mount | grep gfs2
-    /dev/mapper/shared_vg1-shared_lv1 on /mnt/gfs1 type gfs2 (rw,noatime,seclabel)
-    /dev/mapper/shared_vg1-shared_lv2 on /mnt/gfs2 type gfs2 (rw,noatime,seclabel)
-    /dev/mapper/shared_vg2-shared_lv1 on /mnt/gfs3 type gfs2 (rw,noatime,seclabel)
-
-    Check the status of the cluster.
-
-    # pcs status --full
-  
