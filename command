@@ -103,6 +103,9 @@ solver.onlyRequires = true
 installRecommends=false
 zypper migration
 
+ethtool -i eth0
+lshw -class network
+lspci | grep -i 'ethernet'
 
 The server has 4 Ethernet links to a layer 3 switch with names:
 
