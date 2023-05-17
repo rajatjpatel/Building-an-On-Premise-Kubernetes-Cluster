@@ -110,7 +110,7 @@ zypper migration
 ethtool -i eth0
 lshw -class network
 lspci | grep -i 'ethernet'
-
+lshw -short -c network
 The server has 4 Ethernet links to a layer 3 switch with names:
 
 for i in enp3s0f0 enp3s0f1 enp4s0f0 enp4s0f1; do echo $i; ethtool $i|grep -i "Link detected";done
