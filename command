@@ -92,7 +92,11 @@ showmount -e
 On client
 mount -t nfs4 192.168.122.100:share01 /mnt
 mount -t nfs 1192.168.122.100:/home/nfs-share/nfs-root/share01 /mnt
-
+https://www.suse.com/c/upgrading-suse-linux-enterprise-in-the-public-cloud/
+1. zypper patch
+2. zypper migration
+3. zypper in suse-migration-sle15-activation
+4. run_migration
 SUSEConnect -r
 SUSEConnect -r REGISTRATION_CODE -e EMAIL_ADDRESS
 SUSEConnect --list-extensions | grep LTSS
