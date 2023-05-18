@@ -47,7 +47,7 @@ Set up an lvmlockd resource as part of the locking resource group.
 # pcs resource create lvmlockd --group locking ocf:heartbeat:lvmlockd op monitor interval=30s on-fail=fence
 
 # pcs stonith create dx11840_ipmi fence_ipmilan ip=10.51.244.75 lanplus=1 username=unixadmin password='redhat123' pcmk_monitor_timeout=120s
-# pcs stonith create dx11840_ipmi fence_ipmilan ip=10.51.244.76 lanplus=1 username=unixadmin password='redhat123' pcmk_monitor_timeout=120s
+# pcs stonith create dx11841_ipmi fence_ipmilan ip=10.51.244.76 lanplus=1 username=unixadmin password='redhat123' pcmk_monitor_timeout=120s
 # pcs stonith update dx11840_ipmi delay=10
 # pcs cluster config update totem token=120000
 
@@ -125,4 +125,6 @@ If the 'IPaddr2' resource’s NIC device is not specified, the floating IP must 
 # pcs resource create appsip1 ocf:heartbeat:IPaddr2 ip=10.44.115.198 cidr_netmask=24 op monitor interval=30s
 # pcs resource create appsip2 ocf:heartbeat:IPaddr2 ip=10.44.115.199 cidr_netmask=24 op monitor interval=30s
 
-
+#####################################
+pcs constraint location dx11840_ipmi avoids dx11840_ipmi=INFINITY
+pcs constraint location dx11841_ipmi avoids dx11841_ipmi=INFINITY
