@@ -107,7 +107,7 @@ solver.onlyRequires = true
 /etc/zypp/zypper.conf
 installRecommends=false
 zypper migration
-
+https://www.suse.com/support/kb/doc/?id=000019243
 SUSEConnect -p sle-module-basesystem/15.3/x86_64
 SUSEConnect -p sle-module-legacy/15.3/x86_64
 SUSEConnect -p sle-module-python2/15.3/x86_64
