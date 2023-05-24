@@ -92,29 +92,7 @@ showmount -e
 On client
 mount -t nfs4 192.168.122.100:share01 /mnt
 mount -t nfs 1192.168.122.100:/home/nfs-share/nfs-root/share01 /mnt
-###############################################################################
-https://www.suse.com/c/upgrading-suse-linux-enterprise-in-the-public-cloud/
-1. zypper patch
-2. zypper migration
-3. zypper in suse-migration-sle15-activation
-4. run_migration
-SUSEConnect -r
-SUSEConnect -r REGISTRATION_CODE -e EMAIL_ADDRESS
-SUSEConnect --list-extensions | grep LTSS
-SUSEConnect -p SLES-LTSS/15.3/x86_64 -r REGISTRATION_CODE
-/etc/zypp/zypp.conf.
-solver.onlyRequires = true
-/etc/zypp/zypper.conf
-installRecommends=false
-zypper migration
-https://www.suse.com/support/kb/doc/?id=000019243
-SUSEConnect -p sle-module-basesystem/15.3/x86_64
-SUSEConnect -p sle-module-legacy/15.3/x86_64
-SUSEConnect -p sle-module-python2/15.3/x86_64
-SUSEConnect -p sle-we/15.3/x86_64 -r <registration-code>
-SUSEConnect -p sle-module-development-tools/15.3/x86_64
-SUSEConnect -p sle-module-server-applications/15.3/x86_64
-###################################################################
+
 ethtool -i eth0
 lshw -class network
 lspci | grep -i 'ethernet'
