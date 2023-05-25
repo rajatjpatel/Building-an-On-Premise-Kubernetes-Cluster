@@ -1,5 +1,6 @@
 ###############################################################################
 https://www.suse.com/c/upgrading-suse-linux-enterprise-in-the-public-cloud/
+supportconfig
 1. zypper patch
 2. zypper migration
 3. zypper in suse-migration-sle15-activation
