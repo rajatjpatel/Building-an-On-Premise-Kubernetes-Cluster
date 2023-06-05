@@ -1,0 +1,9 @@
+echo 1 > /sys/block/sda/device/rescan
+lvextend -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
+resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv
+lsblk -fs /dev/sda3
+partprobe
+https://askubuntu.com/questions/254491/failed-to-get-canonical-path-of-cow/772892#772892
+https://packetpushers.net/ubuntu-extend-your-default-lvm-space/
+https://geekdudes.wordpress.com/2021/04/09/ubuntu-20-04-extend-boot-partition/
+https://brianchristner.io/how-to-resize-ubuntu-root-partition/
