@@ -20,6 +20,8 @@ nmcli connection up ens1f1
 nmcli connection up ens10f1
 nmcli connection up bond1
 
+route add -net 198.161.1.0 netmask 255.255.255.0 gw 192.168.206.1 eth0
+ip route add 198.161.1.0/24 via 198.168.206.1 dev eth0
 
 ipa-server-install --domain=nbf.local --realm=NBF.LOCAL --ds-password=redhat --admin-password=redhat --hostname=ipa.nbf.ae --ip-address=192.168.0.1 --reverse-zone=0.168.192.in-addr.arpa. --forwarder=172.16.21.21 --allow-zone-overlap --setup-dns --unattended
 
