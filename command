@@ -19,6 +19,9 @@ nmcli connection add type ethernet slave-type bond con-name ens10f1 ifname ens10
 nmcli connection up ens1f1
 nmcli connection up ens10f1
 nmcli connection up bond1
+
+route-eth0
+198.161.1.0/24 via 192.168.206.1 dev eth0
 ip route delete default
 route add -net 198.161.1.0 netmask 255.255.255.0 gw 192.168.206.1 eth0
 ip route add 198.161.1.0/24 via 198.168.206.1 dev eth0
