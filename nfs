@@ -80,3 +80,60 @@ This example does the following:
 
 # vi /etc/fstab
 ipaddress/hostname:/home 	/remote_home	 nfs 	ro,nosuid 	0 	0
+
+
+########################################################################
+On both the nodes
+dnf -y install pacemaker pcs fence-agents-all
+
+systemctl enable pcsd
+systemctl start  pcsd
+
+echo "redhat" | passwd --stdin hacluster
+pcs host auth node1 node2
+pcs cluster setup nfscluster node1 node2
+
+On 1st node1
+
+pcs cluster start --all
+pcs cluster enable --all
+pcs cluster status
+
+Set Fence Device on Cluster 
+Using RHV 
+pcs stonith create rhv-m fence_rhevm ipaddr=172.16.50.81 login='admin@internal' passwd='Root@321' ssl=1 ssl_insecure=1 disable_http_filter=1 pcmk_host_map="drapn1.nbf.ae:DRAPN1;drapn2.nbf.ae:DRAPN2;drapn3.nbf.ae:DRAPN3" power_timeout=30 shell_timeout=30 login_timeout=30
+On both the nodes
+vi /etc/lvm/lvm.conf
+# line 1217: change
+system_id_source = "uname"
+
+On 1st node1
+parted --script /dev/sdb "mklabel msdos"
+parted --script /dev/sdb "mkpart primary 0% 100%"
+parted --script /dev/sdb "set 1 lvm on"
+
+pvcreate /dev/sdb1
+vgcreate vg_ha /dev/sdb1
+vgs -o+systemid
+lvcreate -l 100%FREE -n lv_ha vg_ha
+mkfs.ext4 /dev/vg_ha/lv_ha
+vgchange vg_ha -an
+lvm pvscan --cache --activate ay
+pcs resource create lvm_ha ocf:heartbeat:LVM-activate vgname=vg_ha vg_access_mode=system_id --group ha_group
+
+On both the nodes
+mkdir /nfs-share
+pcs resource create nfs_share ocf:heartbeat:Filesystem device=/dev/vg_ha/lv_ha directory=/nfs-share fstype=ext4 --group ha_group
+pcs resource create nfs_daemon ocf:heartbeat:nfsserver nfs_shared_infodir=/nfs-share/nfsinfo nfs_no_notify=true --group ha_group
+pcs resource create nfs_vip ocf:heartbeat:IPaddr2 ip=192.168.122.100 cidr_netmask=24 --group ha_group
+pcs resource create nfs_notify ocf:heartbeat:nfsnotify source_host=192.168.122.100 --group ha_group
+
+mkdir -p /nfs-share/nfs-root/share01
+pcs resource create nfs_root ocf:heartbeat:exportfs clientspec=192.168.122.0/255.255.255.0 options=rw,sync,no_root_squash directory=/nfs-share/nfs-root fsid=0 --group ha_group
+pcs resource create nfs_share01 ocf:heartbeat:exportfs clientspec=192.168.122.0/255.255.255.0 options=rw,sync,no_root_squash directory=/nfs-share/nfs-root/share01 fsid=1 --group ha_group
+
+showmount -e
+
+On client
+mount -t nfs4 192.168.122.100:share01 /mnt
+mount -t nfs 1192.168.122.100:/home/nfs-share/nfs-root/share01 /mnt
