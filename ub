@@ -4,7 +4,7 @@ resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv
 lsblk -fs /dev/sda3
 partprobe
 
-
+dd bs=16M if=/dev/sda | ssh root@serverB "dd bs=16M of=/dev/sda"
 
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
 apt-get update
