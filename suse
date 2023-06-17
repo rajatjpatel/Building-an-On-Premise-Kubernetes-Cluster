@@ -1,3 +1,19 @@
+echo 1 > /sys/block/sda/device/rescan
+
+parted -s -a opt /dev/sda "print free"
+
+parted -s -a opt /dev/sda "resizepart 2 100%"
+
+echo $?
+
+parted -s -a opt /dev/sda "print free"
+
+parted -s -a opt /dev/sda "print free" "resizepart 2 100%" "print free"
+
+pvresize /dev/sda2
+
+lvextend -r /dev/system/root -l 100%FREE
+
 ###############################################################################
 https://www.suse.com/c/upgrading-suse-linux-enterprise-in-the-public-cloud/
 supportconfig
