@@ -6,8 +6,10 @@ partprobe
 
 dd bs=16M if=/dev/sda | ssh root@serverB "dd bs=16M of=/dev/sda"
 
-dd if=/dev/sda bs=20M| gzip -c > /backup.img.gz
-gunzip -c /backup.img.gz | dd of=/dev/sda
+dd if=/dev/sda  conv=sync,noerror bs=20M| gzip -c > /backup.img.gz
+gunzip -c /backup.img.gz | dd of=/dev/sda conv=sync,noerror bs=16M
+gzip -dc /backup.img.gz
+mount -o ro,loop,offset=32256 /backup.img /mnt/
 
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do sudo apt-get remove $pkg; done
 apt-get update
