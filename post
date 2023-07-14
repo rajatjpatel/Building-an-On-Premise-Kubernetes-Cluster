@@ -1,0 +1,147 @@
+yum install postfix -y
+vi /etc/postfix/main.cf
+
+# line 95 : uncomment and specify hostname
+myhostname = mail.server
+
+# line 102 : uncomment and specify domain name
+mydomain = server
+
+# line 118 : uncomment
+myorigin = $mydomain
+
+# line 135 : change
+inet_interfaces = all
+
+# line 138 : change it if use only IPv4
+inet_protocols = ipv4
+
+# line 183 : add
+mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
+
+# line 283 : uncomment and specify your local network
+mynetworks = 127.0.0.0/8, 10.0.0.0/24
+
+# line 438 : uncomment (use Maildir)
+home_mailbox = Maildir/
+
+# line 593 : add
+# hide the kind or version of SMTP software
+smtpd_banner = $myhostname ESMTP
+
+# add follows to the end
+# disable SMTP VRFY command
+disable_vrfy_command = yes
+
+# require HELO command to sender hosts
+smtpd_helo_required = yes
+
+# limit an email size
+# example below means 10M bytes limit
+message_size_limit = 10240000
+
+# SMTP-Auth settings
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain = $myhostname
+smtpd_recipient_restrictions = permit_mynetworks, permit_auth_destination, permit_sasl_authenticated, reject
+
+# systemctl enable --now postfix
+
+##########################################
+relayhost = [smtp.office365.com]:587
+mynetworks = 127.0.0.0/8
+inet_interfaces = loopback-only
+smtp_use_tls = yes
+smtp_always_send_ehlo = yes
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+smtp_sasl_tls_security_options = noanonymous
+smtp_tls_security_level = encrypt
+smtp_generic_maps = hash:/etc/postfix/generic
+
+vi /etc/postfix/sasl_passwd
+[smtp.office365.com]:587 user@domainname:password
+postmap /etc/postfix/sasl_passwd
+chown root:postfix /etc/postfix/sasl_passwd
+chmod 640 /etc/postfix/sasl_passwd
+https://linuxhowtoguide.blogspot.com/2017/10/how-to-configure-postfix-smtp-relay.html
+##########################################
+vi /etc/postfix/main.cf
+# add to the end
+# reject unknown clients that forward lookup and reverse lookup of their hostnames on DNS do not match
+smtpd_client_restrictions = permit_mynetworks, reject_unknown_client_hostname, permit
+
+# rejects senders that domain name set in FROM are not registered in DNS or 
+# not registered with FQDN
+smtpd_sender_restrictions = permit_mynetworks, reject_unknown_sender_domain, reject_non_fqdn_sender
+
+# reject hosts that domain name set in FROM are not registered in DNS or 
+# not registered with FQDN when your SMTP server receives HELO command
+smtpd_helo_restrictions = permit_mynetworks, reject_unknown_hostname, reject_non_fqdn_hostname, reject_invalid_hostname, permit
+
+systemctl restart postfix
+vi /etc/dovecot/dovecot.conf
+# line 30 : uncomment (if not use IPv6, remove [::])
+listen = *, ::
+# vi /etc/dovecot/conf.d/10-auth.conf
+# line 10 : uncomment and change (allow plain text auth)
+disable_plaintext_auth = no
+# line 100 : add
+auth_mechanisms = plain login
+# vi /etc/dovecot/conf.d/10-mail.conf
+# line 30 : uncomment and add
+mail_location = maildir:~/Maildir
+# vi /etc/dovecot/conf.d/10-master.conf
+# line 107-109 : uncomment and add like follows
+  # Postfix smtp-auth
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0666
+    user = postfix
+    group = postfix
+  }
+
+# vi /etc/dovecot/conf.d/10-ssl.conf
+# line 8 : change (not require SSL)
+ssl = yes
+# systemctl enable --now dovecot
+
+ vi /etc/postfix/main.cf
+# line 709, 715 : comment out
+#smtpd_tls_cert_file = /etc/pki/tls/certs/postfix.pem
+#smtpd_tls_key_file = /etc/pki/tls/private/postfix.key
+# add to the end (replace certificate to your own one)
+smtpd_use_tls = yes
+smtpd_tls_cert_file = /etc/letsencrypt/live/mail.srv.world/fullchain.pem
+smtpd_tls_key_file = /etc/letsencrypt/live/mail.srv.world/privkey.pem
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+# vi /etc/postfix/master.cf
+# line 17,18,20 : uncomment
+submission inet n       -       n       -       -       smtpd
+  -o syslog_name=postfix/submission
+#  -o smtpd_tls_security_level=encrypt
+  -o smtpd_sasl_auth_enable=yes
+
+# line 29-32 : uncomment
+smtps     inet  n       -       n       -       -       smtpd
+  -o syslog_name=postfix/smtps
+  -o smtpd_tls_wrappermode=yes
+  -o smtpd_sasl_auth_enable=yes
+  
+# vi /etc/dovecot/conf.d/10-ssl.conf
+# line 8 : change (if set SSL required, specify [required])
+ssl = yes
+# line 14,15 : specify certificates
+ssl_cert = </etc/letsencrypt/live/mail.srv.world/fullchain.pem
+ssl_key = </etc/letsencrypt/live/mail.srv.world/privkey.pem
+# systemctl restart postfix dovecot
+
+restorecon -v /etc/letsencrypt/live/mail.srv.world/fullchain.pem
+restorecon -v /etc/letsencrypt/live/mail.srv.world/privkey.pem
+
+dnf -y install postfix-perl-scripts
+# generate mail log summary for yesterday
+# perl /usr/sbin/pflogsumm -d yesterday /var/log/maillog
