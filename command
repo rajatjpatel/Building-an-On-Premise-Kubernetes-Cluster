@@ -41,6 +41,7 @@ https://access.redhat.com/solutions/3578631
 https://access.redhat.com/solutions/3380881
 https://access.redhat.com/solutions/802003
 https://access.redhat.com/solutions/2259961
+https://askubuntu.com/questions/1406888/ubuntu-22-04-gpu-passthrough-qemu
 
 
 
