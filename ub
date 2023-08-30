@@ -3,6 +3,7 @@ lvextend -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
 resize2fs /dev/mapper/ubuntu--vg-ubuntu--lv
 lsblk -fs /dev/sda3
 partprobe
+echo "c t l" >  /sys/class/scsi_host/hostX/scan
 
 dd bs=16M if=/dev/sda | ssh root@serverB "dd bs=16M of=/dev/sda"
 
