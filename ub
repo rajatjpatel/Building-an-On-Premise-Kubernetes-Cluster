@@ -28,4 +28,12 @@ echo \
   apt-get update
   
   apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  
+
+du -x   -d1 -h /
+du -x -d1 -h /var  | sort -hr`
+du -kscx *
+du -x -h -d 1 <partition root dir>| sort -h
+lsof | egrep "deleted|COMMAND"
+echo > /proc/pid/fd/fd_number (PID)
+lsof -Fn -Fs |grep -B1 -i deleted | grep ^s  | cut -c 2- | awk '{s+=$1} END {print s}'
+lsof -F sn0 | tr -d '\000' | grep deleted | sed 's/^[a-z]*\([0-9]*\)n/\1 /' | sort -n
