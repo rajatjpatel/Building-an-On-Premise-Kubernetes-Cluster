@@ -1,0 +1,12 @@
+**Image format**    **Argument to qemu-img**
+raw                     raw
+qcow2                   qcow2
+VDI (VirtualBox)        vdi
+VMDK (VMWare)           vmdk
+VHD (Hyper-V)           vpc
+This example will convert a raw image file named centos63.dsk to a qcow2 image file.
+
+$ qemu-img convert -f raw -O qcow2 centos64.dsk centos64.qcow2
+To convert from vmdk to raw, you would do:
+
+$ qemu-img convert -f vmdk -O raw centos64.vmdk centos64.img
