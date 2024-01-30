@@ -10,3 +10,5 @@ $ qemu-img convert -f raw -O qcow2 centos64.dsk centos64.qcow2
 To convert from vmdk to raw, you would do:
 
 $ qemu-img convert -f vmdk -O raw centos64.vmdk centos64.img
+
+qemu-img convert -p -f vpc -O qcow2 centos6.9.vhd centos6.9.qcow2
