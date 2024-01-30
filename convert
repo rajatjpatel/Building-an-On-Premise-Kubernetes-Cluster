@@ -12,3 +12,7 @@ To convert from vmdk to raw, you would do:
 $ qemu-img convert -f vmdk -O raw centos64.vmdk centos64.img
 
 qemu-img convert -p -f vpc -O qcow2 centos6.9.vhd centos6.9.qcow2
+
+qemu-img convert -f qcow2 -o subformat=fixed,force_size -O vpc \
+  Fedora-Cloud-Base-27-1.6.x86_64.qcow2 \
+  Fedora-Cloud-Base-27-1.6.x86_64.vhd
