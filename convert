@@ -21,3 +21,9 @@ qemu-img convert -f qcow2 -o subformat=fixed,force_size -O vpc \
 csrutil enable 
 
 sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate
+https://skipmdm.com/en
+
+0.0.0.0 iprofiles.apple.com
+0.0.0.0 mdmenrollment.apple.com
+0.0.0.0 deviceenrollment.apple.com
+0.0.0.0 gdmf.apple.com
