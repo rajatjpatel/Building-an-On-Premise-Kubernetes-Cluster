@@ -48,3 +48,8 @@ touch /Volumes/Macintosh\ HD/var/db/ConfigurationProfiles/Settings/.cloudConfigR
 0.0.0.0 gdmf.apple.com
 0.0.0.0 acmdm.apple.com
 0.0.0.0 albert.apple.com
+
+nmcli connection modify eth0 ipv4.routes "192.168.0.0/24 10.0.0.1,192.168.1.0/24 10.0.0.1"
+nmcli connection show eth0
+
+nmcli connection modify eth0 +ipv4.routes "192.168.122.0/24 10.10.10.1"
