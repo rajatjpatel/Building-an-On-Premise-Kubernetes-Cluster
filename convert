@@ -17,38 +17,6 @@ qemu-img convert -f qcow2 -o subformat=fixed,force_size -O vpc \
   Fedora-Cloud-Base-27-1.6.x86_64.qcow2 \
   Fedora-Cloud-Base-27-1.6.x86_64.vhd
 
-
-csrutil enable 
-
-sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -deactivate
-https://skipmdm.com/en
-
-0.0.0.0 iprofiles.apple.com
-0.0.0.0 mdmenrollment.apple.com
-0.0.0.0 deviceenrollment.apple.com
-0.0.0.0 gdmf.apple.com
-
-
-launchctl disable system/com.apple.ManagedClient.enroll
-
-rm -rf /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord
-rm -rf /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound
-touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled
-touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
-
-rm -rf /Volumes/Macintosh\ HD/var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord
-rm -rf /Volumes/Macintosh\ HD/var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound
-touch /Volumes/Macintosh\ HD/var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled
-touch /Volumes/Macintosh\ HD/var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
-
-#block mdm connect
-0.0.0.0 iprofiles.apple.com
-0.0.0.0 mdmenrollment.apple.com
-0.0.0.0 deviceenrollment.apple.com
-0.0.0.0 gdmf.apple.com
-0.0.0.0 acmdm.apple.com
-0.0.0.0 albert.apple.com
-
 nmcli connection modify eth0 ipv4.routes "192.168.0.0/24 10.0.0.1,192.168.1.0/24 10.0.0.1"
 nmcli connection show eth0
 
