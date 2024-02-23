@@ -1,0 +1,13 @@
+hdiutil create -o /tmp/Sonoma -size 16384m -volname Sonoma -layout SPUD -fs HFS+J
+
+hdiutil attach /tmp/Sonoma.dmg -noverify -mountpoint /Volumes/Sonoma
+
+sudo /Applications/Install\ macOS\ Sonoma.app/Contents/Resources/createinstallmedia --volume /Volumes/Sonoma –nointeraction
+
+hdiutil eject -force /Volumes/Install\ macOS\ Sonoma
+
+hdiutil convert /tmp/Sonoma.dmg -format UDTO -o ~/Desktop/Sonoma
+
+mv -v ~/Desktop/Sonoma.cdr ~/Desktop/Sonoma.iso
+
+rm -fv /tmp/Sonoma.dmg
