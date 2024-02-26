@@ -12,6 +12,7 @@ mv -v ~/Desktop/Sonoma.cdr ~/Desktop/Sonoma.iso
 
 rm -fv /tmp/Sonoma.dmg
 
+sudo /Applications/Install\ macOS\ Sonoma.app/Contents/Resources/createinstallmedia --volume /Volumes/MyVolume
 
 csrutil enable 
 
