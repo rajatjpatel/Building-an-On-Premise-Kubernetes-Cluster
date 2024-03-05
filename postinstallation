@@ -40,11 +40,6 @@ systemctl stop firewalld ; systemctl disable firewalld
 sed -i 's/X11Forwarding yes/X11Forwarding no/g' /etc/ssh/sshd_config
 lsscsi --scsi_id -g |grep -w sdb
 
-touch /var/lock/subsys/local
-for i in $(ls /sys/block/sd*/device/eh_timeout); do echo 5 > $i ; done
-for i in $(ls /sys/class/scsi_host/*/eh_deadline); do echo 5 > $i ; done
-for i in $(ls /sys/block/sd*/device/timeout); do echo 20 > $i ; done
-
 cat <<EOF> /etc/kdump.conf
 xfs  /dev/mapper/rhel-lv_crash
 path /
@@ -57,7 +52,23 @@ echo c > /proc/sysrq-trigger
 
 yum install -y lsof  net-tools unzip nfs-util rpcbind ksh mlocate tcpdump traceroute sysstat net-snmp net-snmp-utils nmap sos m4 bind-utils  gcc-c++* nfs-utils ntp usbutils ipmitool psmisc zip wget yum-utils  compat-libstdc++  libaio-devel compat-libcap1 sg3_utils xorg-x11-xauth xorg-x11-fonts-* xorg-x11-utils xorg-x11-apps
 
+yum install mdadm
+-Examine
+mdadm -E /dev/sdc
+mdadm -E /dev/sdd
 
+mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdc /dev/sdd
+
+mdadm --details /dev/md0
+
+mkfs.xfs /dev/md0
+
+====================
+touch /var/lock/subsys/local
+for i in $(ls /sys/block/sd*/device/eh_timeout); do echo 5 > $i ; done
+for i in $(ls /sys/class/scsi_host/*/eh_deadline); do echo 5 > $i ; done
+for i in $(ls /sys/block/sd*/device/timeout); do echo 20 > $i ; done
+======================
 subscription-manager register --username [username] --password [password]
 subscription-manager role --set="Red Hat Enterprise Linux Server"
 subscription-manager service-level --set="Premium"
