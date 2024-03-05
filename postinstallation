@@ -1,0 +1,71 @@
+
+cat << EOF > /etc/multipath.conf
+defaults {
+        user_friendly_names yes
+        find_multipaths yes
+        checker_timeout 10
+        polling_interval 5
+      path_selector           "round-robin 0"
+
+}
+devices {
+        device {
+                vendor                  "(HITACHI|HP)"
+                product                 "OPEN-.*"
+                no_path_retry 3
+                fast_io_fail_tmo 5
+                dev_loss_tmo 10
+                }
+         device {
+                vendor                  "PURE"
+                product                 "FlashArray"
+                path_grouping_policy "multibus"
+                path_selector "queue-length 0"
+                path_checker "tur"
+                features "0"
+                hardware_handler "0"
+                prio "const"
+                failback immediate
+                fast_io_fail_tmo 10
+                dev_loss_tmo 60
+                user_friendly_names yes
+                }
+        }
+blacklist {
+wwid 3600508b1001c9c91cf1ca2b269b0e650
+}
+EOF
+sed -i 's/enforcing/disabled/g' /etc/selinux/config /etc/selinux/config
+systemctl stop firewalld ; systemctl disable firewalld
+sed -i 's/X11Forwarding yes/X11Forwarding no/g' /etc/ssh/sshd_config
+lsscsi --scsi_id -g |grep -w sdb
+
+touch /var/lock/subsys/local
+for i in $(ls /sys/block/sd*/device/eh_timeout); do echo 5 > $i ; done
+for i in $(ls /sys/class/scsi_host/*/eh_deadline); do echo 5 > $i ; done
+for i in $(ls /sys/block/sd*/device/timeout); do echo 20 > $i ; done
+
+cat <<EOF> /etc/kdump.conf
+xfs  /dev/mapper/rhel-lv_crash
+path /
+core_collector makedumpfile -c --message-level 1 -d 1
+default reboot
+EOF
+
+echo 1 > /proc/sys/kernel/sysrq
+echo c > /proc/sysrq-trigger
+
+yum install -y lsof  net-tools unzip nfs-util rpcbind ksh mlocate tcpdump traceroute sysstat net-snmp net-snmp-utils nmap sos m4 bind-utils  gcc-c++* nfs-utils ntp usbutils ipmitool psmisc zip wget yum-utils  compat-libstdc++  libaio-devel compat-libcap1 sg3_utils xorg-x11-xauth xorg-x11-fonts-* xorg-x11-utils xorg-x11-apps
+
+
+subscription-manager register --username [username] --password [password]
+subscription-manager role --set="Red Hat Enterprise Linux Server"
+subscription-manager service-level --set="Premium"
+subscription-manager usage --set="Production"
+subscription-manager attach --auto
+dnf updateinfo list updates security
+dnf updateinfo list security --installed
+dnf update --security
+dnf needs-restarting
+dnf remove *iw*
+dnf list installed
