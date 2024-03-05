@@ -1,3 +1,13 @@
+/            - 20GB
+/boot   - 2GB 
+/boot/efi - 2GB
+/home  - 10GB
+/opt      - 15GB
+/var       - 20GB
+/tmp     - 15GB
+swap    - 16GB                                                                                                               
+/var/crash  110% of memory                                                                                                                                          
+
 
 cat << EOF > /etc/multipath.conf
 defaults {
