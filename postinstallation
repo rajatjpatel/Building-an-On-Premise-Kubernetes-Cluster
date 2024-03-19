@@ -73,6 +73,19 @@ mdadm --details /dev/md0
 
 mkfs.xfs /dev/md0
 
+mdadm --detail --scan >> /etc/mdadm.conf
+mdadm --fail /dev/md0 /dev/sda
+mdadm --remove /dev/md0 /dev/sda
+mdadm --add /dev/md0 /dev/sdb
+cat /proc/mdstat or mdadm --detail /dev/md0
+mdadm --examine /dev/hda
+
+mdadm -S /dev/md0
+mdadm: stopped /dev/md0
+
+mdadm -As
+
+echo check > /sys/block/md0/md/sync_action
 ====================
 touch /var/lock/subsys/local
 for i in $(ls /sys/block/sd*/device/eh_timeout); do echo 5 > $i ; done
