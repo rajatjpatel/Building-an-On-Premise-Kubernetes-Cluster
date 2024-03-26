@@ -42,5 +42,5 @@ lsof -F sn0 | tr -d '\000' | grep deleted | sed 's/^[a-z]*\([0-9]*\)n/\1 /' | so
 set autoindent
 set tabstop=2
 set shiftwidth=2
-autocmd FileType yaml setlocal ai ts=2 sw=2 et
-autocmd FileType yml setlocal ai ts=2 sw=2 et
+autocmd FileType yaml setlocal ai ts=2 sw=2 et nu colorcolumn=1,3,5,7,9,11,13
+autocmd FileType yml setlocal ai ts=2 sw=2 et nu colorcolumn=1,3,5,7,9,11,13
