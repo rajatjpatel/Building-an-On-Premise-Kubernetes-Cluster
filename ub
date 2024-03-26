@@ -37,3 +37,10 @@ lsof | egrep "deleted|COMMAND"
 echo > /proc/pid/fd/fd_number (PID)
 lsof -Fn -Fs |grep -B1 -i deleted | grep ^s  | cut -c 2- | awk '{s+=$1} END {print s}'
 lsof -F sn0 | tr -d '\000' | grep deleted | sed 's/^[a-z]*\([0-9]*\)n/\1 /' | sort -n
+
+.vimrc
+set autoindent
+set tabstop=2
+set shiftwidth=2
+autocmd FileType yaml setlocal ai ts=2 sw=2 et
+autocmd FileType yml setlocal ai ts=2 sw=2 et
