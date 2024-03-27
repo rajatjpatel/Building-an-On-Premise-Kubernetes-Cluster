@@ -103,3 +103,11 @@ dnf update --security
 dnf needs-restarting
 dnf remove *iw*
 dnf list installed
+
+
+echo "- - -" | tee /sys/class/fc_host/host*/scan
+
+echo "1" > /sys/class/fc_host/host0/issue_lip
+echo "- - -" > /sys/class/scsi_host/host0/scan
+echo "1" > /sys/class/fc_host/host1/issue_lip
+echo "- - -" > /sys/class/scsi_host/host1/scan
