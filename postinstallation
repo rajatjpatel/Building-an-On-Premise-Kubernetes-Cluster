@@ -45,6 +45,9 @@ blacklist {
 wwid 3600508b1001c9c91cf1ca2b269b0e650
 }
 EOF
+
+sed -i -e 's/dhcp/none/g' ifcfg-bond0
+sed 's/dhcp/none/g' ifcfg-bond0
 sed -i 's/enforcing/disabled/g' /etc/selinux/config /etc/selinux/config
 systemctl stop firewalld ; systemctl disable firewalld
 sed -i 's/X11Forwarding yes/X11Forwarding no/g' /etc/ssh/sshd_config
