@@ -8,6 +8,47 @@
 swap    - 16GB                                                                                                               
 /var/crash  110% of memory                                                                                                                                          
 
+ens3f0np0
+ens3f1np1
+ens4f0np0
+ens4f1np1
+
+cat << EOF > ifcfg-ens3f0np0
+TYPE=Ethernet
+BOOTPROTO=none
+DEVICE=ens3f0np0
+ONBOOT=yes
+MASTER=bond0
+SLAVE=yes
+USERCTL=no
+EOF
+
+cat << EOF > ifcfg-bond0
+DEVICE=bond0
+BONDING_MASTER=yes
+BONDING_OPTS="miimon=100 mode=4 xmit_hash_policy=2+3layer"
+ONBOOT=yes
+TYPE=Bond
+BOOTPROTO=none
+MTU=9000
+USERCTL=no
+NM_CONTROLLED=no
+EOF
+
+cat << EOF > ifcfg-bond0.3115
+DEVICE=bond0.3115
+VLAN=yes
+VLAN_ID=3115
+ONBOOT=yes
+BOOTPROTO=none
+NM_CONTROLLED=no
+IPADDR=10.44.115.214
+PREFIX=24
+GATEWAY=10.44.115.1
+MTU=9000
+USERCTL=no
+NM_CONTROLLED=no
+EOF
 
 cat << EOF > /etc/multipath.conf
 defaults {
