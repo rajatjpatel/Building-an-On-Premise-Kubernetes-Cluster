@@ -6,6 +6,10 @@ parted -s -a opt /dev/sda "resizepart 2 100%"
 
 echo $?
 
+yum install cloud-utils-growpart
+
+growpart /dev/sda X
+
 parted -s -a opt /dev/sda "print free"
 
 parted -s -a opt /dev/sda "print free" "resizepart 2 100%" "print free"
