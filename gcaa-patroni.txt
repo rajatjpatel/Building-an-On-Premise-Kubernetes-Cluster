@@ -8,6 +8,7 @@ vgcreate vg00 /dev/sdb
 lvcreate -l 100%FREE -n lv00 vg00
 mkfs.xfs /dev/vg00/lv00
 
+lvextend -r -l +100%FREE /dev/name-of-volume-group/root
 
 dnf -y install epel-release
 dnf -y update
