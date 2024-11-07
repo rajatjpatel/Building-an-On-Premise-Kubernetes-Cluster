@@ -18,7 +18,7 @@ pvresize /dev/sda2
 
 lvextend -r /dev/system/root -l 100%FREE
 
-lvextend -r -l +100%FREE /dev/name-of-volume-group/root 
+lvextend -r -l +100%FREE /dev/mapper/rhel-root 
 
 ssh root@192.98.1.10 "dd if=/dev/sda | gzip -1 -" | dd of=backup.gz
 ###############################################################################
