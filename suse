@@ -14,6 +14,8 @@ pvresize /dev/sda2
 
 lvextend -r /dev/system/root -l 100%FREE
 
+lvextend -r -l +100%FREE /dev/name-of-volume-group/root 
+
 ssh root@192.98.1.10 "dd if=/dev/sda | gzip -1 -" | dd of=backup.gz
 ###############################################################################
 https://www.suse.com/c/upgrading-suse-linux-enterprise-in-the-public-cloud/
